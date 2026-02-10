@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "../../../supabase/supabase";
+import { Link } from "react-router-dom";
+
 
 interface FormData {
   name: string;
@@ -101,46 +103,59 @@ export default function ContactForm() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const allTouched: Record<string, boolean> = {};
-    Object.keys(formData).forEach((k) => (allTouched[k] = true));
-    setTouched(allTouched);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const validationErrors = validate();
-    setErrors(validationErrors);
+  const allTouched: Record<string, boolean> = {};
+  Object.keys(formData).forEach((k) => (allTouched[k] = true));
+  setTouched(allTouched);
 
-    if (Object.keys(validationErrors).length > 0) return;
+  const validationErrors = validate();
+  setErrors(validationErrors);
 
-    setStatus("submitting");
+  if (Object.keys(validationErrors).length > 0) return;
 
-    try {
-      const { error } = await supabase.from("leads").insert([
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          company: formData.company,
-          service: formData.service,
-          message: formData.message,
-        },
-      ]);
+  setStatus("submitting");
 
-      if (error) throw error;
-      setStatus("success");
-      setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
-      setTouched({});
-      setErrors({});
-    } catch (err) {
-      console.error("Form submission error:", err);
-      // Still show success since the form was filled correctly
-      // The table might not exist yet
-      setStatus("success");
-      setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
-      setTouched({});
-      setErrors({});
+  try {
+    // 1) Requiere sesión (porque requests necesita user_id y RLS)
+    const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
+    if (sessionErr) throw sessionErr;
+
+    const session = sessionRes.session;
+    if (!session) {
+      setStatus("error");
+      setErrors((prev) => ({
+        ...prev,
+        email: "Inicia sesión para enviar tu solicitud.",
+      }));
+      return;
     }
-  };
+
+    // 2) Insert real a requests
+    const { error } = await supabase.from("requests").insert([
+      {
+        user_id: session.user.id,
+        company: formData.company?.trim() ? formData.company.trim() : null,
+        service: formData.service,
+        message: formData.message.trim(),
+        // status default en DB
+        // chemist_notes null
+      },
+    ]);
+
+    if (error) throw error;
+
+    setStatus("success");
+    setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
+    setTouched({});
+    setErrors({});
+  } catch (err: any) {
+    console.error("Form submission error:", err);
+    setStatus("error");
+  }
+};
+
 
   const getFieldState = (field: string) => {
     if (!touched[field]) return "idle";
@@ -148,30 +163,43 @@ export default function ContactForm() {
     return "valid";
   };
 
-  if (status === "success") {
-    return (
-      <section id="contact" className="py-20 md:py-28 bg-white">
-        <div className="max-w-[600px] mx-auto px-4 text-center">
-          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-500" />
-          </div>
-          <h2 className="font-syne text-3xl font-extrabold text-neutral-charcoal mb-4">
-            ¡Mensaje Enviado!
-          </h2>
-          <p className="font-manrope text-base text-neutral-text mb-8">
-            Gracias por contactarnos. Un representante se comunicará con usted en
-            breve para atender su solicitud.
-          </p>
+if (status === "error") {
+  return (
+    <section id="contact" className="py-20 md:py-28 bg-white">
+      <div className="max-w-[600px] mx-auto px-4 text-center">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle className="h-10 w-10 text-red-500" />
+        </div>
+
+        <h2 className="font-syne text-3xl font-extrabold text-neutral-charcoal mb-4">
+          No se pudo enviar
+        </h2>
+
+        <p className="font-manrope text-base text-neutral-text mb-8">
+          Si no has iniciado sesión, necesitas iniciar sesión para enviar una solicitud. 
+          Si ya iniciaste sesión, intenta de nuevo.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => setStatus("idle")}
-            className="bg-petro-red hover:bg-petro-red-dark text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all"
+            className="bg-neutral-900 hover:bg-neutral-800 text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all"
           >
-            Enviar otro mensaje
+            Intentar de nuevo
           </button>
+
+          <Link
+            to="/auth"
+            className="bg-petro-red hover:bg-petro-red-dark text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all inline-flex items-center justify-center"
+          >
+            Iniciar sesión
+          </Link>
         </div>
-      </section>
-    );
-  }
+      </div>
+    </section>
+  );
+}
+
 
   return (
     <section id="contact" className="py-20 md:py-28 bg-white">
