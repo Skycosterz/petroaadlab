@@ -14,8 +14,9 @@ const labImages = [
     alt: "Análisis químico",
   },
   {
-    src: "https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?w=400&q=80",
-    alt: "Equipos de laboratorio modernos",
+   src: "https://images.pexels.com/photos/2280549/pexels-photo-2280549.jpeg?auto=compress&cs=tinysrgb&w=400",
+   alt: "Equipos de laboratorio modernos",
+
   },
   {
     src: "https://images.unsplash.com/photo-1581093588401-fbb62a02f120?w=400&q=80",

@@ -104,13 +104,15 @@ export default function AboutSection() {
                   className="w-full h-[300px] object-cover"
                 />
               </div>
-              <div className="rounded-xl overflow-hidden shadow-lg">
-                <img
-                  src="https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?w=600&q=80"
-                  alt="Equipo de laboratorio"
-                  className="w-full h-[250px] object-cover"
-                />
-              </div>
+         <div className="rounded-xl overflow-hidden shadow-lg">
+              <img
+                src="https://images.pexels.com/photos/2280549/pexels-photo-2280549.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                alt="Científica trabajando en laboratorio"
+                className="w-full h-[250px] object-cover"
+              />
+            </div>
+
+
             </div>
             {/* Decorative element */}
             <div className="absolute -top-4 -right-4 w-24 h-24 opacity-10">

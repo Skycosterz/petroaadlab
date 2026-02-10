@@ -9,12 +9,12 @@ export default function HeroSection() {
   return (
     <section id="hero" className="relative overflow-hidden">
       {/* Hero image */}
-      <div className="relative h-[500px] md:h-[600px]">
-        <img
-          src="https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=1600&q=80"
-          alt="Puerto petrolífero"
-          className="w-full h-full object-cover"
-        />
+    <div className="relative h-[500px] md:h-[600px]">
+          <img
+            src="https://images.pexels.com/photos/7234483/pexels-photo-7234483.jpeg?auto=compress&cs=tinysrgb&w=1600"
+            alt="Gasolinera"
+            className="w-full h-full object-cover"
+          />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
         <div className="absolute inset-0 flex items-center">
           <div className="max-w-[1200px] mx-auto px-4 w-full">
