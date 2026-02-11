@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "../../../supabase/supabase";
-import { Link } from "react-router-dom";
-
 
 interface FormData {
   name: string;
@@ -30,6 +28,7 @@ export default function ContactForm() {
     service: "",
     message: "",
   });
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -51,6 +50,7 @@ export default function ContactForm() {
     if (!field || field === "name") {
       if (!formData.name.trim()) newErrors.name = "El nombre es requerido";
     }
+
     if (!field || field === "email") {
       if (!formData.email.trim()) {
         newErrors.email = "El correo es requerido";
@@ -58,6 +58,7 @@ export default function ContactForm() {
         newErrors.email = "Ingrese un correo válido";
       }
     }
+
     if (!field || field === "phone") {
       if (!formData.phone.trim()) {
         newErrors.phone = "El teléfono es requerido";
@@ -65,9 +66,11 @@ export default function ContactForm() {
         newErrors.phone = "Ingrese un teléfono válido";
       }
     }
+
     if (!field || field === "service") {
       if (!formData.service) newErrors.service = "Seleccione un servicio";
     }
+
     if (!field || field === "message") {
       if (!formData.message.trim()) newErrors.message = "El mensaje es requerido";
     }
@@ -83,79 +86,67 @@ export default function ContactForm() {
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    if (touched[field]) {
-      const tempData = { ...formData, [field]: value };
-      const tempErrors: FormErrors = {};
-      // Re-validate
-      if (field === "name" && !value.trim()) tempErrors.name = "El nombre es requerido";
-      if (field === "email") {
-        if (!value.trim()) tempErrors.email = "El correo es requerido";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) tempErrors.email = "Ingrese un correo válido";
-      }
-      if (field === "phone") {
-        if (!value.trim()) tempErrors.phone = "El teléfono es requerido";
-        else if (!/^[\d\s+()-]{8,15}$/.test(value)) tempErrors.phone = "Ingrese un teléfono válido";
-      }
-      if (field === "service" && !value) tempErrors.service = "Seleccione un servicio";
-      if (field === "message" && !value.trim()) tempErrors.message = "El mensaje es requerido";
 
-      setErrors((prev) => ({ ...prev, [field]: tempErrors[field as keyof FormErrors] }));
+    if (!touched[field]) return;
+
+    const tempErrors: FormErrors = {};
+
+    if (field === "name" && !value.trim()) tempErrors.name = "El nombre es requerido";
+
+    if (field === "email") {
+      if (!value.trim()) tempErrors.email = "El correo es requerido";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) tempErrors.email = "Ingrese un correo válido";
     }
+
+    if (field === "phone") {
+      if (!value.trim()) tempErrors.phone = "El teléfono es requerido";
+      else if (!/^[\d\s+()-]{8,15}$/.test(value)) tempErrors.phone = "Ingrese un teléfono válido";
+    }
+
+    if (field === "service" && !value) tempErrors.service = "Seleccione un servicio";
+    if (field === "message" && !value.trim()) tempErrors.message = "El mensaje es requerido";
+
+    setErrors((prev) => ({ ...prev, [field]: tempErrors[field as keyof FormErrors] }));
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const allTouched: Record<string, boolean> = {};
-  Object.keys(formData).forEach((k) => (allTouched[k] = true));
-  setTouched(allTouched);
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(formData).forEach((k) => (allTouched[k] = true));
+    setTouched(allTouched);
 
-  const validationErrors = validate();
-  setErrors(validationErrors);
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
 
-  if (Object.keys(validationErrors).length > 0) return;
+    setStatus("submitting");
 
-  setStatus("submitting");
-
-  try {
-    // 1) Requiere sesión (porque requests necesita user_id y RLS)
-    const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
-    if (sessionErr) throw sessionErr;
-
-    const session = sessionRes.session;
-    if (!session) {
-      setStatus("error");
-      setErrors((prev) => ({
-        ...prev,
-        email: "Inicia sesión para enviar tu solicitud.",
-      }));
-      return;
-    }
-
-    // 2) Insert real a requests
-    const { error } = await supabase.from("requests").insert([
-      {
-        user_id: session.user.id,
+    try {
+      const payload = {
+        contact_name: formData.name.trim(),
+        contact_email: formData.email.trim().toLowerCase(),
+        contact_phone: formData.phone.trim(),
         company: formData.company?.trim() ? formData.company.trim() : null,
         service: formData.service,
         message: formData.message.trim(),
-        // status default en DB
-        // chemist_notes null
-      },
-    ]);
+        // ✅ NO enviar status (evita requests_status_check)
+        // ✅ NO enviar user_id (anon)
+      };
 
-    if (error) throw error;
+      const { error } = await supabase.from("requests").insert([payload]);
+      if (error) throw error;
 
-    setStatus("success");
-    setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
-    setTouched({});
-    setErrors({});
-  } catch (err: any) {
-    console.error("Form submission error:", err);
-    setStatus("error");
-  }
-};
-
+      setStatus("success");
+      setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
+      setTouched({});
+      setErrors({});
+    } catch (err: any) {
+      console.error("Supabase error:", err);
+      alert(err?.message ?? "Error al enviar.");
+      setStatus("error");
+    }
+  };
 
   const getFieldState = (field: string) => {
     if (!touched[field]) return "idle";
@@ -163,44 +154,63 @@ const handleSubmit = async (e: React.FormEvent) => {
     return "valid";
   };
 
-if (status === "error") {
-  return (
-    <section id="contact" className="py-20 md:py-28 bg-white">
-      <div className="max-w-[600px] mx-auto px-4 text-center">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <AlertCircle className="h-10 w-10 text-red-500" />
-        </div>
+  // ERROR SCREEN
+  if (status === "error") {
+    return (
+      <section id="contact" className="py-20 md:py-28 bg-white">
+        <div className="max-w-[600px] mx-auto px-4 text-center">
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="h-10 w-10 text-red-500" />
+          </div>
 
-        <h2 className="font-syne text-3xl font-extrabold text-neutral-charcoal mb-4">
-          No se pudo enviar
-        </h2>
+          <h2 className="font-syne text-3xl font-extrabold text-neutral-charcoal mb-4">
+            No se pudo enviar
+          </h2>
 
-        <p className="font-manrope text-base text-neutral-text mb-8">
-          Si no has iniciado sesión, necesitas iniciar sesión para enviar una solicitud. 
-          Si ya iniciaste sesión, intenta de nuevo.
-        </p>
+          <p className="font-manrope text-base text-neutral-text mb-8">
+            Ocurrió un error al enviar tu solicitud. Intenta de nuevo en unos minutos.
+          </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => setStatus("idle")}
             className="bg-neutral-900 hover:bg-neutral-800 text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all"
           >
             Intentar de nuevo
           </button>
-
-          <Link
-            to="/auth"
-            className="bg-petro-red hover:bg-petro-red-dark text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all inline-flex items-center justify-center"
-          >
-            Iniciar sesión
-          </Link>
         </div>
-      </div>
-    </section>
-  );
-}
+      </section>
+    );
+  }
 
+  // SUCCESS SCREEN
+  if (status === "success") {
+    return (
+      <section id="contact" className="py-20 md:py-28 bg-white">
+        <div className="max-w-[600px] mx-auto px-4 text-center">
+          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-green-500" />
+          </div>
 
+          <h2 className="font-syne text-3xl font-extrabold text-neutral-charcoal mb-4">
+            ¡Solicitud enviada!
+          </h2>
+
+          <p className="font-manrope text-base text-neutral-text mb-8">
+            Gracias. En breve un especialista se pondrá en contacto contigo.
+          </p>
+
+          <button
+            onClick={() => setStatus("idle")}
+            className="bg-neutral-900 hover:bg-neutral-800 text-white font-manrope font-semibold px-6 py-3 rounded-lg transition-all"
+          >
+            Enviar otra solicitud
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // MAIN FORM
   return (
     <section id="contact" className="py-20 md:py-28 bg-white">
       <div className="max-w-[1200px] mx-auto px-4">
@@ -214,15 +224,20 @@ if (status === "error") {
               ¿Necesita un análisis?
             </h2>
             <p className="font-manrope text-base text-neutral-text leading-relaxed mb-8">
-              Complete el formulario y uno de nuestros especialistas se pondrá en
-              contacto con usted para proporcionarle una cotización personalizada.
+              Complete el formulario y uno de nuestros especialistas se pondrá en contacto con usted para
+              proporcionarle una cotización personalizada.
             </p>
 
             <div className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="h-5 w-5 text-petro-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
@@ -231,10 +246,16 @@ if (status === "error") {
                   <p className="font-manrope text-sm text-neutral-text">Ciudad de México, México</p>
                 </div>
               </div>
+
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="h-5 w-5 text-petro-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
                 <div>
@@ -242,10 +263,16 @@ if (status === "error") {
                   <p className="font-manrope text-sm text-neutral-text">contacto@petroaadlab.com</p>
                 </div>
               </div>
+
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="h-5 w-5 text-petro-red" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
                   </svg>
                 </div>
                 <div>
@@ -320,6 +347,7 @@ if (status === "error") {
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="font-manrope text-sm font-medium text-neutral-charcoal mb-1.5 block">
                   Teléfono *
@@ -365,7 +393,7 @@ if (status === "error") {
               />
             </div>
 
-            {/* Service selector */}
+            {/* Service */}
             <div>
               <label className="font-manrope text-sm font-medium text-neutral-charcoal mb-1.5 block">
                 Servicio de interés *
@@ -410,8 +438,8 @@ if (status === "error") {
                   getFieldState("message") === "error"
                     ? "border-red-400 bg-red-50/50"
                     : getFieldState("message") === "valid"
-                    ? "border-green-400 bg-green-50/30"
-                    : "border-neutral-border focus:border-petro-red focus:ring-2 focus:ring-red-100"
+                      ? "border-green-400 bg-green-50/30"
+                      : "border-neutral-border focus:border-petro-red focus:ring-2 focus:ring-red-100"
                 }`}
                 placeholder="Describa brevemente sus requerimientos de análisis..."
               />
