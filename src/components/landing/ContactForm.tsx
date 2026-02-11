@@ -110,43 +110,53 @@ export default function ContactForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const allTouched: Record<string, boolean> = {};
-    Object.keys(formData).forEach((k) => (allTouched[k] = true));
-    setTouched(allTouched);
+  const allTouched: Record<string, boolean> = {};
+  Object.keys(formData).forEach((k) => (allTouched[k] = true));
+  setTouched(allTouched);
 
-    const validationErrors = validate();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+  const validationErrors = validate();
+  setErrors(validationErrors);
+  if (Object.keys(validationErrors).length > 0) return;
 
-    setStatus("submitting");
+  setStatus("submitting");
 
-    try {
-      const payload = {
-        contact_name: formData.name.trim(),
-        contact_email: formData.email.trim().toLowerCase(),
-        contact_phone: formData.phone.trim(),
-        company: formData.company?.trim() ? formData.company.trim() : null,
-        service: formData.service,
-        message: formData.message.trim(),
-        // ✅ NO enviar status (evita requests_status_check)
-        // ✅ NO enviar user_id (anon)
-      };
+  try {
+    const payload = {
+    name: formData.name.trim(),
+    email: formData.email.trim().toLowerCase(),
+    phone: formData.phone.trim(),
+    company: formData.company?.trim() || null,
+    service: formData.service, 
+    message: formData.message.trim(),
+};
 
-      const { error } = await supabase.from("requests").insert([payload]);
-      if (error) throw error;
 
-      setStatus("success");
-      setFormData({ name: "", email: "", phone: "", company: "", service: "", message: "" });
-      setTouched({});
-      setErrors({});
-    } catch (err: any) {
-      console.error("Supabase error:", err);
-      alert(err?.message ?? "Error al enviar.");
-      setStatus("error");
-    }
-  };
+    const { error } = await supabase
+      .from("leads")
+      .insert([payload]);
+
+    if (error) throw error;
+
+    setStatus("success");
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      company: "",
+      service: "",
+      message: "",
+    });
+
+    setTouched({});
+    setErrors({});
+  } catch (err: any) {
+    console.error("Supabase error:", err);
+    alert(err?.message ?? "Error al enviar.");
+    setStatus("error");
+  }
+};
 
   const getFieldState = (field: string) => {
     if (!touched[field]) return "idle";
