@@ -49,7 +49,6 @@ Se emplearon para:
 - Implementación de políticas RLS.
 - Estructuración del sistema de roles.
 - Validación de formularios.
-- Redacción y estructuración del README.
 - Optimización y revisión de código.
 
 Las herramientas de IA se utilizaron como soporte técnico y no sustituyen la implementación manual ni la comprensión del sistema.
