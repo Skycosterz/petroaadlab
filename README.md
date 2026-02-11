@@ -199,6 +199,3 @@ src/
  ├── lib/
  ├── supabase/
  └── App.tsx
-
-for select
-using (auth.uid() = id);
